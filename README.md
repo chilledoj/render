@@ -36,3 +36,20 @@ if err := BufferedRender(tmpl, b, "two", nil); err != nil {
 b.WriteTo(os.Stdout)
 // outputs: Error rendering: html/template: "two" is undefined
 ```
+or in the context of an http.HandlerFunc
+```go
+ts := httptest.NewServer(hello())
+	defer ts.Close()
+	res, err := http.Get(ts.URL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	greeting, err := ioutil.ReadAll(res.Body)
+	res.Body.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("%s", greeting)
+	// outputs: <html><body><h1>Hello World</h1><p>Testing Templates</p></body></html>
+```
