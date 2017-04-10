@@ -17,10 +17,10 @@ func TestManager(t *testing.T) {
 	}
 	validTemplate, err := template.New("test").Parse(`<one>{{.Test}}</one>`)
 	if err != nil {
-		t.Fatalf("Invalid Test template", err)
+		t.Fatal("Invalid Test template", err)
 	}
 	if err = tm.AddTemplate("test", validTemplate); err != nil {
-		t.Errorf("Template can not be added to TemplateManager map", err)
+		t.Error("Template can not be added to TemplateManager map", err)
 	}
 	data := struct {
 		Test string
@@ -28,7 +28,7 @@ func TestManager(t *testing.T) {
 	b := new(bytes.Buffer)
 
 	if err = tm.Render(b, "test", data); err != nil {
-		t.Fatalf("Render returned an error ", err, b)
+		t.Fatal("Render returned an error ", err, b)
 	}
 	returnedString := b.String()
 	if returnedString != "<one>TEST</one>" {
@@ -66,9 +66,9 @@ func ExampleTemplateManager() {
 
 func BenchmarkSequential(b *testing.B) {
 	tm := render.NewTM()
-	validTemplate, _ := template.New("").Parse(`<one>{{.Test}}</one>`)
+	validTemplate, _ := template.New("test").Parse(`<one>{{.Test}}</one>`)
 	if err := tm.AddTemplate("test", validTemplate); err != nil {
-		b.Errorf("Template can not be added to TemplateManager map", err)
+		b.Errorf("Template can not be added to TemplateManager map %s", err)
 	}
 	data := struct {
 		Test string
@@ -77,16 +77,16 @@ func BenchmarkSequential(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		if err := tm.Render(buf, "test", data); err != nil {
-			b.Fatalf("Render returned an error ", err, b)
+			b.Fatalf("Render returned an error: %s", err)
 		}
 	}
 }
 
 func BenchmarkGoRoutine_AllocBuf(b *testing.B) {
 	tm := render.NewTM()
-	validTemplate, _ := template.New("").Parse(`<one>{{.Test}}</one>`)
+	validTemplate, _ := template.New("test").Parse(`<one>{{.Test}}</one>`)
 	if err := tm.AddTemplate("test", validTemplate); err != nil {
-		b.Errorf("Template can not be added to TemplateManager map", err)
+		b.Errorf("Template can not be added to TemplateManager map: %s", err)
 	}
 	data := struct {
 		Test string
@@ -96,7 +96,7 @@ func BenchmarkGoRoutine_AllocBuf(b *testing.B) {
 		go func() {
 			buf := new(bytes.Buffer)
 			if err := tm.Render(buf, "test", data); err != nil {
-				b.Fatalf("Render returned an error ", err, b)
+				b.Fatalf("Render returned an error %s", err)
 			}
 		}()
 	}
@@ -104,9 +104,9 @@ func BenchmarkGoRoutine_AllocBuf(b *testing.B) {
 
 func BenchmarkGoRoutine_SingleBuf(b *testing.B) {
 	tm := render.NewTM()
-	validTemplate, _ := template.New("").Parse(`<one>{{.Test}}</one>`)
+	validTemplate, _ := template.New("test").Parse(`<one>{{.Test}}</one>`)
 	if err := tm.AddTemplate("test", validTemplate); err != nil {
-		b.Errorf("Template can not be added to TemplateManager map", err)
+		b.Errorf("Template can not be added to TemplateManager map: %s", err)
 	}
 	data := struct {
 		Test string
@@ -117,6 +117,36 @@ func BenchmarkGoRoutine_SingleBuf(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		go func() {
 			lock.Lock()
+			if err := tm.Render(buf, "test", data); err != nil {
+				b.Fatalf("Render returned an error ", err, b)
+			}
+			lock.Unlock()
+		}()
+	}
+}
+
+func BenchmarkGoRoutine_BufPool(b *testing.B) {
+	tm := render.NewTM()
+	validTemplate, _ := template.New("test").Parse(`<one>{{.Test}}</one>`)
+	if err := tm.AddTemplate("test", validTemplate); err != nil {
+		b.Errorf("Template can not be added to TemplateManager map: %s", err)
+	}
+	data := struct {
+		Test string
+	}{"TEST"}
+
+	var bufPool = sync.Pool{
+		New: func() interface{} {
+			return new(bytes.Buffer)
+		},
+	}
+	var lock sync.Mutex
+	for i := 0; i < b.N; i++ {
+		go func() {
+			lock.Lock()
+			buf := bufPool.Get().(*bytes.Buffer)
+			defer bufPool.Put(buf)
+			buf.Reset()
 			if err := tm.Render(buf, "test", data); err != nil {
 				b.Fatalf("Render returned an error ", err, b)
 			}
