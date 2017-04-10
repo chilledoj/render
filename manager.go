@@ -46,8 +46,7 @@ func (tm *TemplateManager) Render(w io.Writer, name string, data interface{}) er
 	buf := tm.bufpool.Get()
 	defer tm.bufpool.Put(buf)
 
-	err := tmpl.Execute(w, data)
-	if err != nil {
+	if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
 		return err
 	}
 

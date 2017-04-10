@@ -47,7 +47,7 @@ func TestManager(t *testing.T) {
 // ExampleTemplateManager
 func ExampleTemplateManager() {
 	tm := render.NewTM()
-	validTemplate, err := template.New("").Parse(`<one>{{.Test}}</one>`)
+	validTemplate, err := template.New("one").Parse(`<one>{{.Test}}</one>`)
 	if err != nil {
 		panic(err)
 	}
