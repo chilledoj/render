@@ -21,3 +21,18 @@ if err != nil {
 }
 // Output: <one>Template One</one>
 ```
+## Simpler - just buffered renderer
+There is also the following function provided for a simpler straight forward buffered template executor.
+```go
+tmpl, err := template.New("one").Parse(`<one>{{.Test}}</one>`)
+if err != nil {
+  panic(err)
+}
+b := new(bytes.Buffer)
+if err := BufferedRender(tmpl, b, "two", nil); err != nil {
+  fmt.Printf("Error rendering: %s", err)
+  return
+}
+b.WriteTo(os.Stdout)
+// outputs: Error rendering: html/template: "two" is undefined
+```
