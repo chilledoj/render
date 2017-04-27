@@ -1,4 +1,4 @@
-package render
+package render_test
 
 import (
 	"bytes"
@@ -11,6 +11,8 @@ import (
 	"os"
 	"sync"
 	"testing"
+
+	"github.com/chilledoj/render"
 )
 
 func TestBufferedRender(t *testing.T) {
@@ -39,27 +41,28 @@ func TestBufferedRender(t *testing.T) {
 		t.Run(tt.testname, func(t2 *testing.T) {
 			b := bufPool.Get().(*bytes.Buffer)
 			defer bufPool.Put(b)
-			if err := BufferedRender(tt.tmpl, b, tt.templateName, tt.data); err != nil && !tt.wantErr {
+			if err := render.BufferedRender(tt.tmpl, b, tt.templateName, tt.data); err != nil && !tt.wantErr {
 				t.Errorf("Unexpected error with %s: %v", tt.templateName, err)
 			}
 		})
 	}
 }
 
-func ExampleBufferedRender() {
+// ExampleRender_BufferedRender
+func ExampleRender_BufferedRender() {
 	tmpl, err := template.New("one").Parse(`<one>{{.Test}}</one>`)
 	if err != nil {
 		panic(err)
 	}
 	b := new(bytes.Buffer)
-	if err := BufferedRender(tmpl, b, "two", nil); err != nil {
+	if err := render.BufferedRender(tmpl, b, "one", nil); err != nil {
 		fmt.Printf("Error rendering: %s", err)
 		return
 	}
 	b.WriteTo(os.Stdout)
-	// outputs: Error rendering: html/template: "two" is undefined
+	// Output: <one></one>
 }
-func ExampleBufRenderHandler() {
+func ExampleRender_BufferedRender_Handler() {
 	ts := httptest.NewServer(hello())
 	defer ts.Close()
 	res, err := http.Get(ts.URL)
@@ -73,7 +76,7 @@ func ExampleBufRenderHandler() {
 	}
 
 	fmt.Printf("%s", greeting)
-	// outputs: <html><body><h1>Hello World</h1><p>Testing Templates</p></body></html>
+	// Output: <html><body><h1>Hello World</h1><p>Testing Templates</p></body></html>
 }
 func hello() http.HandlerFunc {
 	tmpl, err := template.New("hello").Parse(`<html><body><h1>Hello World</h1><p>{{.Test}}</p></body></html>`)
@@ -81,7 +84,7 @@ func hello() http.HandlerFunc {
 		panic(err)
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := BufferedRender(tmpl, w, "hello", struct{ Test string }{"Testing Templates"}); err != nil {
+		if err := render.BufferedRender(tmpl, w, "hello", struct{ Test string }{"Testing Templates"}); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}

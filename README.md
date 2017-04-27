@@ -1,7 +1,7 @@
 # Render
 A renderer for Golang projects which need to handle errors properly.
 
-```
+```go
 tm := render.NewTM()
 validTemplate, err := template.New("").Parse(`<one>{{.Test}}</one>`)
 if err != nil {
@@ -26,19 +26,20 @@ There is also the following function provided for a simpler straight forward buf
 ```go
 tmpl, err := template.New("one").Parse(`<one>{{.Test}}</one>`)
 if err != nil {
-  panic(err)
+	panic(err)
 }
 b := new(bytes.Buffer)
-if err := BufferedRender(tmpl, b, "two", nil); err != nil {
-  fmt.Printf("Error rendering: %s", err)
-  return
+if err := render.BufferedRender(tmpl, b, "one", nil); err != nil {
+	fmt.Printf("Error rendering: %s", err)
+	return
 }
 b.WriteTo(os.Stdout)
-// outputs: Error rendering: html/template: "two" is undefined
+// Output: <one></one>
 ```
 or in the context of an http.HandlerFunc
 ```go
-ts := httptest.NewServer(hello())
+func main() {
+	ts := httptest.NewServer(hello())
 	defer ts.Close()
 	res, err := http.Get(ts.URL)
 	if err != nil {
@@ -51,5 +52,17 @@ ts := httptest.NewServer(hello())
 	}
 
 	fmt.Printf("%s", greeting)
-	// outputs: <html><body><h1>Hello World</h1><p>Testing Templates</p></body></html>
+	// Output: <html><body><h1>Hello World</h1><p>Testing Templates</p></body></html>
+}
+func hello() http.HandlerFunc {
+	tmpl, err := template.New("hello").Parse(`<html><body><h1>Hello World</h1><p>{{.Test}}</p></body></html>`)
+	if err != nil {
+		panic(err)
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := render.BufferedRender(tmpl, w, "hello", struct{ Test string }{"Testing Templates"}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}
+}
 ```
